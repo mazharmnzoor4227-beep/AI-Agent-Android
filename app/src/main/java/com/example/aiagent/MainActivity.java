@@ -23,86 +23,194 @@ public class MainActivity extends Activity {
     private ScrollView scrollView;
 
     private String apiKey = "";
-    private String previousResponseId = null;
+    private String endpoint = "";
+    private String model = "";
+    private String provider = "";
 
-    private final String model = "gpt-5.6-luna";
+    private final JSONArray history = new JSONArray();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        showKeyDialog();
+        showSetupDialog();
     }
 
     private int dp(int n) {
         return (int) (n * getResources().getDisplayMetrics().density + 0.5f);
     }
 
-    private GradientDrawable rounded(int color, float radius) {
-        GradientDrawable drawable = new GradientDrawable();
-        drawable.setColor(color);
-        drawable.setCornerRadius(dp((int) radius));
-        return drawable;
+    private GradientDrawable rounded(int color, int radius) {
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(color);
+        g.setCornerRadius(dp(radius));
+        return g;
     }
 
-    private TextView createText(String value, int size, int color, boolean bold) {
-        TextView view = new TextView(this);
-        view.setText(value);
-        view.setTextSize(size);
-        view.setTextColor(color);
-
-        view.setTypeface(
+    private TextView text(String value, int size, int color, boolean bold) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextSize(size);
+        t.setTextColor(color);
+        t.setTypeface(
                 Typeface.DEFAULT,
                 bold ? Typeface.BOLD : Typeface.NORMAL
         );
-
-        return view;
+        return t;
     }
 
-    private void showKeyDialog() {
+    private void showSetupDialog() {
+
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(20), dp(10), dp(20), 0);
+
+        Spinner spinner = new Spinner(this);
+
+        String[] providers = {
+                "OpenAI",
+                "OpenRouter",
+                "Groq",
+                "DeepSeek",
+                "Together AI",
+                "xAI",
+                "Gemini",
+                "Claude",
+                "Custom OpenAI-compatible"
+        };
+
+        ArrayAdapter<String> adapter =
+                new ArrayAdapter<>(
+                        this,
+                        android.R.layout.simple_spinner_dropdown_item,
+                        providers
+                );
+
+        spinner.setAdapter(adapter);
+
+        EditText endpointInput = new EditText(this);
+        endpointInput.setHint("API URL");
+
+        EditText modelInput = new EditText(this);
+        modelInput.setHint("Model name");
 
         EditText keyInput = new EditText(this);
-
-        keyInput.setHint("sk-...");
-        keyInput.setSingleLine(true);
+        keyInput.setHint("API key");
 
         keyInput.setInputType(
                 InputType.TYPE_CLASS_TEXT |
                 InputType.TYPE_TEXT_VARIATION_PASSWORD
         );
 
-        keyInput.setPadding(
-                dp(16),
-                dp(12),
-                dp(16),
-                dp(12)
-        );
+        box.addView(spinner);
+        box.addView(endpointInput);
+        box.addView(modelInput);
+        box.addView(keyInput);
 
-        LinearLayout wrapper = new LinearLayout(this);
+        spinner.setOnItemSelectedListener(
+                new android.widget.AdapterView.OnItemSelectedListener() {
 
-        wrapper.setPadding(
-                dp(22),
-                dp(8),
-                dp(22),
-                0
-        );
+                    @Override
+                    public void onItemSelected(
+                            android.widget.AdapterView<?> parent,
+                            View view,
+                            int position,
+                            long id
+                    ) {
 
-        wrapper.addView(
-                keyInput,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                )
+                        String p = providers[position];
+
+                        if (p.equals("OpenAI")) {
+
+                            endpointInput.setText(
+                                    "https://api.openai.com/v1/chat/completions"
+                            );
+
+                            modelInput.setText("");
+
+                        } else if (p.equals("OpenRouter")) {
+
+                            endpointInput.setText(
+                                    "https://openrouter.ai/api/v1/chat/completions"
+                            );
+
+                            modelInput.setText("");
+
+                        } else if (p.equals("Groq")) {
+
+                            endpointInput.setText(
+                                    "https://api.groq.com/openai/v1/chat/completions"
+                            );
+
+                            modelInput.setText("");
+
+                        } else if (p.equals("DeepSeek")) {
+
+                            endpointInput.setText(
+                                    "https://api.deepseek.com/chat/completions"
+                            );
+
+                            modelInput.setText("");
+
+                        } else if (p.equals("Together AI")) {
+
+                            endpointInput.setText(
+                                    "https://api.together.xyz/v1/chat/completions"
+                            );
+
+                            modelInput.setText("");
+
+                        } else if (p.equals("xAI")) {
+
+                            endpointInput.setText(
+                                    "https://api.x.ai/v1/chat/completions"
+                            );
+
+                            modelInput.setText("");
+
+                        } else if (p.equals("Gemini")) {
+
+                            endpointInput.setText(
+                                    "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+                            );
+
+                            modelInput.setText(
+                                    "gemini-2.5-flash"
+                            );
+
+                        } else if (p.equals("Claude")) {
+
+                            endpointInput.setText(
+                                    "https://api.anthropic.com/v1/messages"
+                            );
+
+                            modelInput.setText("");
+
+                        } else {
+
+                            endpointInput.setText("");
+                            modelInput.setText("");
+                        }
+                    }
+
+                    @Override
+                    public void onNothingSelected(
+                            android.widget.AdapterView<?> parent
+                    ) {}
+                }
         );
 
         AlertDialog dialog =
                 new AlertDialog.Builder(this)
-                        .setTitle("Connect OpenAI API")
+                        .setTitle("Universal AI Agent")
                         .setMessage(
-                                "अपनी OpenAI API key यहाँ paste करो।"
+                                "Provider चुनो, Model Name और API Key डालो।"
                         )
-                        .setView(wrapper)
+                        .setView(box)
                         .setCancelable(false)
-                        .setPositiveButton("Connect", null)
+                        .setPositiveButton(
+                                "Connect",
+                                null
+                        )
                         .create();
 
         dialog.setOnShowListener(d -> {
@@ -111,22 +219,55 @@ public class MainActivity extends Activity {
                     AlertDialog.BUTTON_POSITIVE
             ).setOnClickListener(v -> {
 
-                String key =
+                provider =
+                        spinner
+                                .getSelectedItem()
+                                .toString();
+
+                endpoint =
+                        endpointInput
+                                .getText()
+                                .toString()
+                                .trim();
+
+                model =
+                        modelInput
+                                .getText()
+                                .toString()
+                                .trim();
+
+                apiKey =
                         keyInput
                                 .getText()
                                 .toString()
                                 .trim();
 
-                if (key.length() < 10) {
+                if (endpoint.isEmpty()) {
 
-                    keyInput.setError(
-                            "Valid API key डालो"
+                    endpointInput.setError(
+                            "API URL डालो"
                     );
 
                     return;
                 }
 
-                apiKey = key;
+                if (model.isEmpty()) {
+
+                    modelInput.setError(
+                            "Model name डालो"
+                    );
+
+                    return;
+                }
+
+                if (apiKey.length() < 5) {
+
+                    keyInput.setError(
+                            "API key डालो"
+                    );
+
+                    return;
+                }
 
                 dialog.dismiss();
 
@@ -147,7 +288,11 @@ public class MainActivity extends Activity {
         );
 
         root.setBackgroundColor(
-                Color.rgb(247, 247, 248)
+                Color.rgb(
+                        247,
+                        247,
+                        248
+                )
         );
 
         LinearLayout header =
@@ -158,9 +303,9 @@ public class MainActivity extends Activity {
         );
 
         header.setPadding(
-                dp(20),
                 dp(18),
-                dp(20),
+                dp(16),
+                dp(18),
                 dp(14)
         );
 
@@ -169,18 +314,22 @@ public class MainActivity extends Activity {
         );
 
         TextView title =
-                createText(
-                        "AI Agent",
-                        23,
-                        Color.rgb(18, 18, 20),
+                text(
+                        "Universal AI Agent",
+                        22,
+                        Color.rgb(
+                                20,
+                                20,
+                                22
+                        ),
                         true
                 );
 
         TextView subtitle =
-                createText(
-                        "Connected • " + model,
+                text(
+                        provider + " • " + model,
                         12,
-                        Color.rgb(95, 95, 105),
+                        Color.GRAY,
                         false
                 );
 
@@ -189,8 +338,6 @@ public class MainActivity extends Activity {
 
         scrollView =
                 new ScrollView(this);
-
-        scrollView.setFillViewport(true);
 
         chatList =
                 new LinearLayout(this);
@@ -201,32 +348,30 @@ public class MainActivity extends Activity {
 
         chatList.setPadding(
                 dp(14),
-                dp(18),
+                dp(16),
                 dp(14),
-                dp(18)
+                dp(16)
         );
 
-        scrollView.addView(chatList);
+        scrollView.addView(
+                chatList
+        );
 
-        LinearLayout composer =
+        LinearLayout bottom =
                 new LinearLayout(this);
 
-        composer.setOrientation(
+        bottom.setOrientation(
                 LinearLayout.HORIZONTAL
         );
 
-        composer.setGravity(
-                Gravity.BOTTOM
-        );
-
-        composer.setPadding(
+        bottom.setPadding(
                 dp(12),
                 dp(10),
                 dp(12),
                 dp(12)
         );
 
-        composer.setBackgroundColor(
+        bottom.setBackgroundColor(
                 Color.WHITE
         );
 
@@ -239,22 +384,22 @@ public class MainActivity extends Activity {
 
         messageInput.setTextSize(16);
 
-        messageInput.setMinHeight(
-                dp(52)
-        );
-
         messageInput.setMaxLines(5);
 
         messageInput.setPadding(
-                dp(15),
+                dp(14),
                 dp(10),
-                dp(15),
+                dp(14),
                 dp(10)
         );
 
         messageInput.setBackground(
                 rounded(
-                        Color.rgb(242, 242, 244),
+                        Color.rgb(
+                                242,
+                                242,
+                                244
+                        ),
                         18
                 )
         );
@@ -262,24 +407,25 @@ public class MainActivity extends Activity {
         sendButton =
                 new Button(this);
 
-        sendButton.setText("Send");
+        sendButton.setText(
+                "Send"
+        );
 
         sendButton.setTextColor(
                 Color.WHITE
         );
 
-        sendButton.setTextSize(14);
-
-        sendButton.setAllCaps(false);
-
-        sendButton.setTypeface(
-                Typeface.DEFAULT,
-                Typeface.BOLD
+        sendButton.setAllCaps(
+                false
         );
 
         sendButton.setBackground(
                 rounded(
-                        Color.rgb(20, 20, 22),
+                        Color.rgb(
+                                20,
+                                20,
+                                22
+                        ),
                         18
                 )
         );
@@ -299,12 +445,12 @@ public class MainActivity extends Activity {
                 dp(8)
         );
 
-        composer.addView(
+        bottom.addView(
                 messageInput,
                 inputParams
         );
 
-        composer.addView(
+        bottom.addView(
                 sendButton,
                 new LinearLayout.LayoutParams(
                         dp(82),
@@ -312,13 +458,7 @@ public class MainActivity extends Activity {
                 )
         );
 
-        root.addView(
-                header,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-        );
+        root.addView(header);
 
         root.addView(
                 scrollView,
@@ -329,38 +469,28 @@ public class MainActivity extends Activity {
                 )
         );
 
-        root.addView(
-                composer,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-        );
+        root.addView(bottom);
 
         setContentView(root);
 
         addBubble(
-                "AI Agent connected. Message भेजकर API test करो.",
+                "Connected. अब message भेजो.",
                 false
         );
     }
 
     private void addBubble(
             String value,
-            boolean isUser
+            boolean user
     ) {
 
         TextView bubble =
-                createText(
+                text(
                         value,
                         16,
-                        isUser
+                        user
                                 ? Color.WHITE
-                                : Color.rgb(
-                                        25,
-                                        25,
-                                        28
-                                ),
+                                : Color.BLACK,
                         false
                 );
 
@@ -373,7 +503,7 @@ public class MainActivity extends Activity {
 
         bubble.setBackground(
                 rounded(
-                        isUser
+                        user
                                 ? Color.rgb(
                                         24,
                                         24,
@@ -384,15 +514,11 @@ public class MainActivity extends Activity {
                 )
         );
 
-        bubble.setMaxWidth(
-                dp(315)
-        );
-
         LinearLayout row =
                 new LinearLayout(this);
 
         row.setGravity(
-                isUser
+                user
                         ? Gravity.END
                         : Gravity.START
         );
@@ -406,13 +532,7 @@ public class MainActivity extends Activity {
 
         row.addView(bubble);
 
-        chatList.addView(
-                row,
-                new LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT
-                )
-        );
+        chatList.addView(row);
 
         scrollView.post(
                 () ->
@@ -424,33 +544,75 @@ public class MainActivity extends Activity {
 
     private void sendMessage() {
 
-        String message =
+        String msg =
                 messageInput
                         .getText()
                         .toString()
                         .trim();
 
-        if (message.isEmpty()) {
+        if (msg.isEmpty()) {
             return;
         }
 
         messageInput.setText("");
 
         addBubble(
-                message,
+                msg,
                 true
         );
 
-        sendButton.setEnabled(false);
+        try {
 
-        sendButton.setText("...");
+            JSONObject historyItem =
+                    new JSONObject();
+
+            historyItem.put(
+                    "role",
+                    "user"
+            );
+
+            historyItem.put(
+                    "content",
+                    msg
+            );
+
+            history.put(
+                    historyItem
+            );
+
+        } catch (Exception ignored) {}
+
+        sendButton.setEnabled(
+                false
+        );
+
+        sendButton.setText(
+                "..."
+        );
 
         new Thread(() -> {
 
             try {
 
                 String reply =
-                        callOpenAI(message);
+                        callAPI();
+
+                JSONObject aiItem =
+                        new JSONObject();
+
+                aiItem.put(
+                        "role",
+                        "assistant"
+                );
+
+                aiItem.put(
+                        "content",
+                        reply
+                );
+
+                history.put(
+                        aiItem
+                );
 
                 runOnUiThread(() -> {
 
@@ -470,18 +632,11 @@ public class MainActivity extends Activity {
 
             } catch (Exception e) {
 
-                String error =
-                        e.getMessage();
-
                 runOnUiThread(() -> {
 
                     addBubble(
                             "API Error: "
-                                    + (
-                                    error == null
-                                            ? "Unknown error"
-                                            : error
-                            ),
+                                    + e.getMessage(),
                             false
                     );
 
@@ -498,42 +653,33 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private String callOpenAI(
-            String message
-    ) throws Exception {
+    private String callAPI()
+            throws Exception {
 
-        URL url =
-                new URL(
-                        "https://api.openai.com/v1/responses"
-                );
+        if (
+                provider.equals(
+                        "Gemini"
+                )
+        ) {
 
-        HttpURLConnection connection =
-                (HttpURLConnection)
-                        url.openConnection();
+            return callGemini();
 
-        connection.setRequestMethod(
-                "POST"
-        );
+        } else if (
+                provider.equals(
+                        "Claude"
+                )
+        ) {
 
-        connection.setConnectTimeout(
-                20000
-        );
+            return callClaude();
 
-        connection.setReadTimeout(
-                60000
-        );
+        } else {
 
-        connection.setDoOutput(true);
+            return callOpenAICompatible();
+        }
+    }
 
-        connection.setRequestProperty(
-                "Authorization",
-                "Bearer " + apiKey
-        );
-
-        connection.setRequestProperty(
-                "Content-Type",
-                "application/json"
-        );
+    private String callOpenAICompatible()
+            throws Exception {
 
         JSONObject body =
                 new JSONObject();
@@ -544,249 +690,132 @@ public class MainActivity extends Activity {
         );
 
         body.put(
-                "input",
-                message
+                "messages",
+                history
         );
 
-        body.put(
-                "instructions",
-                "You are a helpful Android AI assistant. Reply in the same language as the user."
-        );
+        JSONObject response =
+                request(
+                        endpoint,
+                        body,
+                        "Authorization",
+                        "Bearer " + apiKey
+                );
 
-        body.put(
-                "store",
-                true
-        );
+        JSONArray choices =
+                response.optJSONArray(
+                        "choices"
+                );
 
         if (
-                previousResponseId != null
+                choices == null ||
+                choices.length() == 0
         ) {
 
-            body.put(
-                    "previous_response_id",
-                    previousResponseId
+            throw new IOException(
+                    response.toString()
             );
         }
 
-        byte[] bytes =
-                body
-                        .toString()
-                        .getBytes(
-                                StandardCharsets.UTF_8
+        JSONObject message =
+                choices
+                        .getJSONObject(0)
+                        .getJSONObject(
+                                "message"
                         );
 
-        try (
-                OutputStream output =
-                        connection
-                                .getOutputStream()
-        ) {
-
-            output.write(bytes);
-        }
-
-        int status =
-                connection
-                        .getResponseCode();
-
-        InputStream stream =
-                status >= 200 &&
-                        status < 300
-                        ? connection.getInputStream()
-                        : connection.getErrorStream();
-
-        String raw =
-                readAll(stream);
-
-        JSONObject json =
-                new JSONObject(raw);
-
-        if (
-                status < 200 ||
-                        status >= 300
-        ) {
-
-            JSONObject error =
-                    json.optJSONObject(
-                            "error"
-                    );
-
-            String detail =
-                    error != null
-                            ? error.optString(
-                            "message",
-                            raw
-                    )
-                            : raw;
-
-            throw new IOException(
-                    "HTTP "
-                            + status
-                            + ": "
-                            + detail
-            );
-        }
-
-        previousResponseId =
-                json.optString(
-                        "id",
-                        previousResponseId
-                );
-
-        String outputText =
-                extractOutputText(
-                        json
-                );
-
-        if (
-                outputText.isEmpty()
-        ) {
-
-            throw new IOException(
-                    "API ने text response नहीं दिया."
-            );
-        }
-
-        return outputText;
+        return message.optString(
+                "content"
+        );
     }
 
-    private String extractOutputText(
-            JSONObject json
-    ) {
+    private String callGemini()
+            throws Exception {
 
-        String direct =
-                json.optString(
-                        "output_text",
-                        ""
+        String url =
+                endpoint.replace(
+                        "{model}",
+                        model
                 );
 
-        if (
-                !direct.isEmpty()
-        ) {
-
-            return direct;
-        }
-
-        StringBuilder result =
-                new StringBuilder();
-
-        JSONArray output =
-                json.optJSONArray(
-                        "output"
-                );
-
-        if (
-                output == null
-        ) {
-
-            return "";
-        }
+        JSONArray contents =
+                new JSONArray();
 
         for (
                 int i = 0;
-                i < output.length();
+                i < history.length();
                 i++
         ) {
 
             JSONObject item =
-                    output.optJSONObject(i);
+                    history.getJSONObject(i);
 
-            if (
-                    item == null
-            ) {
+            JSONObject content =
+                    new JSONObject();
 
-                continue;
-            }
+            content.put(
+                    "role",
+                    item.optString(
+                            "role"
+                    ).equals(
+                            "assistant"
+                    )
+                            ? "model"
+                            : "user"
+            );
 
-            JSONArray content =
-                    item.optJSONArray(
+            JSONArray parts =
+                    new JSONArray();
+
+            JSONObject part =
+                    new JSONObject();
+
+            part.put(
+                    "text",
+                    item.optString(
                             "content"
-                    );
+                    )
+            );
 
-            if (
-                    content == null
-            ) {
+            parts.put(part);
 
-                continue;
-            }
+            content.put(
+                    "parts",
+                    parts
+            );
 
-            for (
-                    int j = 0;
-                    j < content.length();
-                    j++
-            ) {
-
-                JSONObject part =
-                        content.optJSONObject(j);
-
-                if (
-                        part == null
-                ) {
-
-                    continue;
-                }
-
-                if (
-                        "output_text".equals(
-                                part.optString(
-                                        "type"
-                                )
-                        )
-                ) {
-
-                    if (
-                            result.length() > 0
-                    ) {
-
-                        result.append("\n");
-                    }
-
-                    result.append(
-                            part.optString(
-                                    "text",
-                                    ""
-                            )
-                    );
-                }
-            }
+            contents.put(
+                    content
+            );
         }
 
-        return result
-                .toString()
-                .trim();
-    }
+        JSONObject body =
+                new JSONObject();
 
-    private String readAll(
-            InputStream input
-    ) throws Exception {
+        body.put(
+                "contents",
+                contents
+        );
 
-        if (
-                input == null
-        ) {
-
-            return "";
-        }
-
-        BufferedReader reader =
-                new BufferedReader(
-                        new InputStreamReader(
-                                input,
-                                StandardCharsets.UTF_8
-                        )
+        JSONObject response =
+                request(
+                        url,
+                        body,
+                        "x-goog-api-key",
+                        apiKey
                 );
 
-        StringBuilder result =
-                new StringBuilder();
+        JSONArray candidates =
+                response.getJSONArray(
+                        "candidates"
+                );
 
-        String line;
+        JSONObject content =
+                candidates
+                        .getJSONObject(0)
+                        .getJSONObject(
+                                "content"
+                        );
 
-        while (
-                (line = reader.readLine())
-                        != null
-        ) {
-
-            result.append(line);
-        }
-
-        return result.toString();
-    }
-                  }
+        JSONArray parts =
+       
